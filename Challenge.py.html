@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
 
 import json
 import pandas as pd 
@@ -10,10 +5,6 @@ import numpy as np
 import re
 
 import time
-
-
-# In[2]:
-
 
 def ETL_data(wiki_data, kaggle_data, movielens_ratings):
 
@@ -32,10 +23,9 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
                 if ('Directed by' in movie or 'Director' in movie) 
                 and ('imdb_link' in movie)
                 and ('No. of episodes' not in movie) ]
-    # -------------------------------------------------------
+    
     # TRANSFORM wiki_data 
     # create alt_title cleaning FUNCTION and a inner fuction of merging specific columns
-    # applied to assumption 2
     def clean_movie(movie):
     # Step 1: Make an empty dict to hold all of the alternative titles.
         movie = dict(movie)  # make a nondestructure copy
@@ -55,7 +45,6 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
     # Step 3: After looping through every key, add the alternative titles dict to the movie object.
         if len(alt_titles_dict) > 0:  # make sure it's valid, then add back to movie
             movie['alt_titles'] = alt_titles_dict
-    
     
         # Inner function for merging column names
         def change_column_name(old_name, new_name):
@@ -101,7 +90,6 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
     wiki_movies_df = wiki_movies_df[wiki_columns_to_keep]
 
     # Regex instance
-    # applied to Assumption 3
     # 'Budget' and 'Box_office' data format
     dollar_form_one = r'\$\s*\d+\.?\d*\s*[mb]illi?on'
     dollar_form_two = r'\$\s*\d{1,3}(?:[,\.]\d{3})+(?!\s[mb]illi?on)'
@@ -111,11 +99,7 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
     date_form_three = r'(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}'
     date_form_four = r'\d{4}'
 
-
-    # applied Assumptions 3
     # parse and clean BOX_OFFICE, BUDGET, RELEASE_DATE and RUNNING TIME in wiki_data
-
-  
     def parse_dollars(s):
         # step 1: check if str type
         if type(s) != str:
@@ -142,8 +126,6 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
             return np.nan
         
     # call FUNCTIONS 
-    
-
     # parse box_office column in wiki_data
     box_office_Series = wiki_movies_df['Box office'].dropna().apply(lambda x: ' '.join(x) if type(x) == list else x)                            .str.replace(r'\$.*[-—–](?![a-z])', '$', regex = True)
     wiki_movies_df['box_office'] = box_office_Series.str.extract(f'({dollar_form_one}|{dollar_form_two})', flags=re.IGNORECASE)[0].apply(parse_dollars)
@@ -162,8 +144,6 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
 
     # convert hour to minute and make a Series then put it back into DF
     wiki_movies_df['running_time'] = running_time_extract.apply(lambda row: row[0]*60 +row[1] if row[2] == 0 else row[2], axis =1)
-
-    
     wiki_movies_df['box_office'] = np.nan
     wiki_movies_df['budget'] = np.nan        
     wiki_movies_df['release_date'] = np.nan
@@ -177,7 +157,6 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
    
     # return wiki_movies_df
 
-    # -------------------------------------------------------
     # TRANSFORM kaggle_data
     
     # filter kaggle_data with only adult is False
@@ -195,13 +174,10 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
     except:
         print('inappropriate data types in Kaggle_megadata')
     
-    
-    # -------------------------------------------------------
     # TRANSFORM movielens_ratings_df
     # convert rating's timestamp into datetime
     movielens_ratings_df['timestamp'] = pd.to_datetime(movielens_ratings_df['timestamp'], unit='s')
 
-    # -------------------------------------------------------
     # TRANSFORM MERGE wiki_movies_df with kaggle_metadata
     # Assumption 5
     movies_df = pd.merge(wiki_movies_df, kaggle_metadata, on ='imdb_id', suffixes=('_wiki','_kaggle'))
@@ -255,11 +231,7 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
                   'Based on':'based_on'
                  }, axis='columns', inplace=True)
     
-    # -------------------------------------------------------
     # TRANSFORM MERGE wiki_movies_df with rating
-    
-    
-    # Assumption 6
     # firstly groupby 'userID' and 'rating', then get the count of (each rating of each movie)
     rating_counts = movielens_ratings_df.groupby(['movieId','rating'], as_index= False).count()                    .rename({'userId':'count'}, axis=1).pivot(index='movieId', columns='rating',values='count')
     
@@ -272,17 +244,12 @@ def ETL_data(wiki_data, kaggle_data, movielens_ratings):
     # fill NaN with zero in all rating columns
     movies_with_ratings_df[rating_counts.columns] = movies_with_ratings_df[rating_counts.columns].fillna(0)
 
-    # -------------------------------------------------------
     # LOAD to PostgreSQL
-    # applied Assumption 7
-
     print(f'''
         ETL process is successful done.\n Extracting from {wiki_data}, {kaggle_data}and {movielens_ratings}.\n 
         Results movies table in PostgreSQL.''')
 
-
 # In[3]:
-
 
 # -------------------------CALL function---------------------------
 ETL_data("wikipedia.movies.json", "movies_metadata.csv", "ratings.csv")
